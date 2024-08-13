@@ -5,6 +5,7 @@ description = ""
 authors = ["Shakhlyn <shakhlyn.sh.du@gmail.com>"]
 readme = "README.md"
 
+SQLALCHEMY_DATABASE_URL ="postgresql+psycopg2://postgres:postgres@localhost/practicedb"
 [tool.poetry.dependencies]
 python = "^3.10"
 uvicorn = "^0.30.5"
