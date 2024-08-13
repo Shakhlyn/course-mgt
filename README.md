@@ -1,1 +1,1 @@
-# This is a first fastapi porject
+# This is a first fastapi project
