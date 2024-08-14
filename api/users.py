@@ -1,58 +1,34 @@
 from typing import List
 
-from fastapi import APIRouter, Path, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Path, Query, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from db.db_setup import get_db
+from pydantic_schemas.user import UserCreate, User
+from api.utils.users import get_user, get_users, get_user_by_email, create_user
 
 router = APIRouter()
 
-users = []
-
-class User(BaseModel):
-    email: str
-    is_active: bool
-    bio: str | None = None  # this is an optional field
-
-class GetUser(BaseModel):
-    message: str
-    user: User | None = None
-    query: str | None = None
-
-@router.get("/users", response_model=List[User])
-# @router.get("/users")
-async def get_users():
-    # return {"user": users}
+@router.get("/users", response_model=List[User], status_code=200)
+async def read_users(skip: int = 0, limit: int=100, db: Session = Depends(get_db)):
+    users = get_users(db, skip=skip, limit=limit)
     return users
  
-@router.post("/users")
-async def create_user(user: User):
-    users.append(user)
-    # return {"msg": f"user {user} is created"}
-    return "success"
-
-# # Path parameter:
-@router.get("/user/{id}", response_model=GetUser)
-async def get_user(id: int):
-    try:
-        user_id = int(id) - 1
-        print(user_id)
-        user = users[user_id]
-        # return f"{user} with parameter {q}"
-        return {"message": "success", "user":user }
-    except:
-        return {"message": "Not found"}
-
+@router.post("/users", response_model=User, status_code=201)
+async def generate_user(user: UserCreate, db: Session = Depends(get_db)):
+    existing_user = get_user_by_email(db=db, email=user.email)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email with this user is already existed")
     
-# Query parameter:
-@router.get("/special-user/{id}", response_model=GetUser | str)
-async def get_special_user(
-    id: int = Path(..., description="User's Id", gt=0), 
-    q: str = Query(None, max_length=5)
-    ):
-    try:
-        user_id = int(id) -1
-        user = users[user_id]
-        # return f"{user} with parameter: {q}"
-        return {"message": "success", "user":user, "query": q }
-    except:
-        return 'not found'
-    
+    return create_user(db=db, user=user)
+
+
+# Path parameter:
+@router.get("/user/{id}", response_model=User)
+async def read_a_user( id: int, db: Session = Depends(get_db)):
+    user =  get_user(db=db, user_id=id)    
+
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found!")
+
+    return user
